@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import {
   Alert,
-  AppBar,
-  Avatar,
   Box,
   Button,
   CircularProgress,
@@ -15,31 +13,20 @@ import {
   IconButton,
   InputLabel,
   List,
-  ListItemButton,
-  ListItemIcon,
-  ListItemText,
   MenuItem,
-  Paper,
   Select,
   Stack,
   TextField,
-  Toolbar,
   Tooltip,
   Typography,
 } from '@mui/material'
 import AddRounded from '@mui/icons-material/AddRounded'
 import ArchiveOutlined from '@mui/icons-material/ArchiveOutlined'
-import CheckCircleOutlineRounded from '@mui/icons-material/CheckCircleOutlineRounded'
 import DeleteOutlineRounded from '@mui/icons-material/DeleteOutlineRounded'
 import Inventory2Outlined from '@mui/icons-material/Inventory2Outlined'
-import LogoutRounded from '@mui/icons-material/LogoutRounded'
 import ManageAccountsOutlined from '@mui/icons-material/ManageAccountsOutlined'
-import MoreHorizRounded from '@mui/icons-material/MoreHorizRounded'
-import PlaylistAddRounded from '@mui/icons-material/PlaylistAddRounded'
 import RestoreOutlined from '@mui/icons-material/RestoreOutlined'
 import ShareOutlined from '@mui/icons-material/ShareOutlined'
-import ShoppingBasketOutlined from '@mui/icons-material/ShoppingBasketOutlined'
-import ShoppingCartOutlined from '@mui/icons-material/ShoppingCartOutlined'
 import EditOutlined from '@mui/icons-material/EditOutlined'
 import { ApiError, type AuthSession } from './auth'
 import {
@@ -61,9 +48,11 @@ import {
   type ShoppingItem,
   type ShoppingList,
 } from './listsApi'
+import { WorkspaceHeader } from './components/WorkspaceHeader'
+import { ListSidebar, type ListView } from './components/ListSidebar'
+import { ItemPanel } from './components/ItemPanel'
 import './Workspace.css'
 
-type ListView = 'active' | 'archive'
 type DialogMode = 'create' | 'rename' | null
 
 interface WorkspaceProps {
@@ -163,7 +152,6 @@ function Workspace({ session, logoutError, onLogout, onSessionExpired }: Workspa
   const currentLists = view === 'active' ? activeLists : archivedLists
   const selectedItems = selectedList ? itemsByList[selectedList.id] ?? [] : []
   const isOwner = selectedList?.permission === 'OWNER'
-  const canEditItems = selectedList?.permission === 'OWNER' || selectedList?.permission === 'EDITOR'
   const isArchived = view === 'archive' || selectedList?.deleted === true
 
   const selectList = async (list: ShoppingList) => {
@@ -380,97 +368,18 @@ function Workspace({ session, logoutError, onLogout, onSessionExpired }: Workspa
 
   return (
     <Box className="workspace-page">
-      <AppBar position="static" elevation={0} className="workspace-appbar">
-        <Toolbar className="workspace-toolbar">
-          <Box className="workspace-brand">
-            <ShoppingBasketOutlined aria-hidden="true" />
-            <Typography component="span">kosár</Typography>
-          </Box>
-          <Box className="workspace-account">
-            <Avatar className="account-avatar">{session.user.username.slice(0, 1).toUpperCase()}</Avatar>
-            <Typography className="account-name">{session.user.username}</Typography>
-            <Tooltip title="Kijelentkezés">
-              <IconButton aria-label="Kijelentkezés" onClick={onLogout}>
-                <LogoutRounded />
-              </IconButton>
-            </Tooltip>
-          </Box>
-        </Toolbar>
-      </AppBar>
+      <WorkspaceHeader session={session} onLogout={onLogout} />
 
       <Box className="workspace-layout">
-        <Paper component="aside" className="list-sidebar" elevation={0}>
-          <Box className="sidebar-topline">
-            <Typography component="h1">Listáim</Typography>
-            <Tooltip title="Új lista">
-              <IconButton aria-label="Új lista" onClick={() => openListDialog('create')}>
-                <AddRounded />
-              </IconButton>
-            </Tooltip>
-          </Box>
-          <Box className="list-view-switch" role="tablist" aria-label="Lista nézet">
-            <Button
-              role="tab"
-              aria-selected={view === 'active'}
-              className={view === 'active' ? 'view-tab selected' : 'view-tab'}
-              onClick={() => changeView('active')}
-              startIcon={<ShoppingCartOutlined />}
-            >
-              Aktív
-            </Button>
-            <Button
-              role="tab"
-              aria-selected={view === 'archive'}
-              className={view === 'archive' ? 'view-tab selected' : 'view-tab'}
-              onClick={() => changeView('archive')}
-              startIcon={<ArchiveOutlined />}
-            >
-              Archívum
-            </Button>
-          </Box>
-          <Divider />
-
-          {loadingLists ? (
-            <Box className="sidebar-loading" role="status">
-              <CircularProgress size={22} />
-            </Box>
-          ) : currentLists.length > 0 ? (
-            <List className="shopping-list-nav" disablePadding>
-              {currentLists.map((list) => (
-                <ListItemButton
-                  key={list.id}
-                  selected={selectedList?.id === list.id}
-                  onClick={() => void selectList(list)}
-                  className="shopping-list-nav-item"
-                >
-                  <ListItemIcon>
-                    <Inventory2Outlined />
-                  </ListItemIcon>
-                  <ListItemText
-                    className="sidebar-list-text"
-                    primary={list.title}
-                    secondary={view === 'active' ? list.ownerUsername : displayDate(list.deletedAt)}
-                  />
-                </ListItemButton>
-              ))}
-            </List>
-          ) : (
-            <Box className="sidebar-empty">
-              <Typography>{view === 'active' ? 'Még nincs aktív listád.' : 'Az archívum üres.'}</Typography>
-            </Box>
-          )}
-
-          {view === 'active' && (
-            <Button
-              className="sidebar-create-button"
-              variant="outlined"
-              startIcon={<PlaylistAddRounded />}
-              onClick={() => openListDialog('create')}
-            >
-              Új lista
-            </Button>
-          )}
-        </Paper>
+        <ListSidebar
+          view={view}
+          lists={currentLists}
+          selectedList={selectedList}
+          loading={loadingLists}
+          onViewChange={changeView}
+          onSelectList={(list) => void selectList(list)}
+          onCreateList={() => openListDialog('create')}
+        />
 
         <Box component="section" className="list-content" aria-live="polite">
           {(error || logoutError) && (
@@ -542,96 +451,20 @@ function Workspace({ session, logoutError, onLogout, onSessionExpired }: Workspa
                 </Stack>
               </Box>
 
-              <Paper className="items-panel" elevation={0}>
-                <Box className="items-panel-heading">
-                  <Box>
-                    <Typography component="h3">Tételek</Typography>
-                    <Typography className="items-count">
-                      {selectedItems.length > 0 ? `${selectedItems.length} ebben a munkamenetben` : 'Nincs betöltött tétel'}
-                    </Typography>
-                  </Box>
-                  <MoreHorizRounded className="items-heading-icon" />
-                </Box>
-
-                {isArchived && (
-                  <Alert severity="info" className="items-notice">
-                    Az archivált lista csak megtekinthető. Visszaállítás után újra szerkeszthető.
-                  </Alert>
-                )}
-                {!isArchived && selectedList.permission === 'VIEWER' && (
-                  <Alert severity="info" className="items-notice">
-                    Önnek csak megtekintési joga van ehhez a listához!
-                  </Alert>
-                )}
-                {!isArchived && canEditItems && (
-                  <Box component="form" className="add-item-form" onSubmit={submitItem}>
-                    <TextField
-                      label="Tétel neve"
-                      value={itemName}
-                      onChange={(event) => setItemName(event.target.value)}
-                      required
-                      fullWidth
-                      slotProps={{ htmlInput: { maxLength: 255 } }}
-                    />
-                    <TextField
-                      label="Mennyiség"
-                      type="number"
-                      value={itemQuantity}
-                      onChange={(event) => setItemQuantity(event.target.value)}
-                      required
-                      slotProps={{ htmlInput: { min: 0.01, max: 99999999.99, step: 0.01 } }}
-                    />
-                    <TextField
-                      label="Egység"
-                      value={itemUnit}
-                      onChange={(event) => setItemUnit(event.target.value)}
-                      required
-                      slotProps={{ htmlInput: { maxLength: 50 } }}
-                    />
-                    <Button type="submit" variant="contained" startIcon={<AddRounded />} disabled={working}>
-                      Hozzáadás
-                    </Button>
-                  </Box>
-                )}
-
-                <Divider />
-
-                {selectedItems.length > 0 ? (
-                  <List className="item-list" disablePadding>
-                    {selectedItems.map((item) => (
-                      <Box component="li" className="item-row" key={item.id}>
-                        <Box className="item-row-icon"><CheckCircleOutlineRounded /></Box>
-                        <Box className="item-row-main">
-                          <Typography className="item-name">{item.name}</Typography>
-                          <Typography className="item-detail">
-                            {new Intl.NumberFormat('hu-HU', { maximumFractionDigits: 2 }).format(item.quantity)} {item.unit}
-                            <span> · </span>{item.createdBy}
-                          </Typography>
-                        </Box>
-                        {canEditItems && !isArchived && (
-                          <Tooltip title="Tétel törlése">
-                            <IconButton
-                              aria-label={`${item.name} törlése`}
-                              onClick={() => void handleRemoveItem(item)}
-                              disabled={working}
-                            >
-                              <DeleteOutlineRounded />
-                            </IconButton>
-                          </Tooltip>
-                        )}
-                      </Box>
-                    ))}
-                  </List>
-                ) : (
-                  <Box className="items-empty">
-                    <Box className="items-empty-icon"><ShoppingBasketOutlined /></Box>
-                    <Typography component="h4">Még nincsenek megjeleníthető tételek</Typography>
-                    <Typography>
-                      Az API jelenleg nem biztosít tétellista-végpontot, ezért a korábban felvitt tételek nem tölthetők be.
-                    </Typography>
-                  </Box>
-                )}
-              </Paper>
+              <ItemPanel
+                items={selectedItems}
+                permission={selectedList.permission}
+                archived={isArchived}
+                working={working}
+                itemName={itemName}
+                itemQuantity={itemQuantity}
+                itemUnit={itemUnit}
+                onItemNameChange={setItemName}
+                onItemQuantityChange={setItemQuantity}
+                onItemUnitChange={setItemUnit}
+                onSubmitItem={submitItem}
+                onRemoveItem={(item) => void handleRemoveItem(item)}
+              />
             </>
           ) : (
             <Box className="workspace-empty">
