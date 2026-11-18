@@ -1,5 +1,15 @@
 import { lazy, Suspense, useCallback, useEffect, useState, type FormEvent } from 'react'
-import { Box, CircularProgress, Typography } from '@mui/material'
+import {
+  Box,
+  Button,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  TextField,
+  Typography,
+} from '@mui/material'
 import ShoppingBasketOutlined from '@mui/icons-material/ShoppingBasketOutlined'
 import {
   ApiError,
@@ -8,14 +18,17 @@ import {
   loadSession,
   login,
   logout,
+  register,
   saveSession,
   type AuthSession,
 } from './auth'
 import { AuthStoryPanel } from './components/AuthStoryPanel'
 import { LoginForm } from './components/LoginForm'
+import { RegistrationForm } from './components/RegistrationForm'
 import './App.css'
 
 type Screen = 'checking' | 'login' | 'authenticated'
+type AuthMode = 'login' | 'register'
 
 const invalidCredentialsMessage = 'Érvénytelen felhasználónév vagy jelszó!'
 const Workspace = lazy(() => import('./Workspace'))
@@ -26,8 +39,10 @@ function App() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [authMode, setAuthMode] = useState<AuthMode>('login')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [message, setMessage] = useState('')
+  const [recoveryKey, setRecoveryKey] = useState('')
 
   useEffect(() => {
     const savedSession = loadSession()
@@ -81,6 +96,30 @@ function App() {
     }
   }
 
+  const handleRegister = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setMessage('')
+    setIsSubmitting(true)
+
+    try {
+      const registration = await register(username.trim(), password)
+      const { recoveryKey: key, ...session } = registration
+      saveSession(session)
+      setSession(session)
+      setRecoveryKey(key)
+      setScreen('authenticated')
+      setPassword('')
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 409) {
+        setMessage('A felhasználónév már foglalt!')
+      } else {
+        setMessage(error instanceof Error ? error.message : 'A regisztráció nem sikerült.')
+      }
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   const handleLogout = useCallback(async () => {
     const savedSession = session ?? loadSession()
     if (!savedSession) {
@@ -113,14 +152,38 @@ function App() {
 
   if (screen === 'authenticated' && session) {
     return (
-      <Suspense fallback={<Box className="checking-state" role="status"><CircularProgress size={28} /></Box>}>
-        <Workspace
-          session={session}
-          logoutError={message}
-          onLogout={handleLogout}
-          onSessionExpired={handleSessionExpired}
-        />
-      </Suspense>
+      <>
+        <Suspense fallback={<Box className="checking-state" role="status"><CircularProgress size={28} /></Box>}>
+          <Workspace
+            session={session}
+            logoutError={message}
+            onLogout={handleLogout}
+            onSessionExpired={handleSessionExpired}
+          />
+        </Suspense>
+        <Dialog open={Boolean(recoveryKey)} onClose={() => undefined} maxWidth="sm" fullWidth>
+          <DialogTitle>Mentse el a helyreállító kódját</DialogTitle>
+          <DialogContent>
+            <Typography className="recovery-description">
+              Ez a kód csak egyszer jelenik meg. Jelszó-visszaállításhoz szüksége lehet rá.
+            </Typography>
+            <TextField
+              label="Helyreállító kód"
+              value={recoveryKey}
+              slotProps={{ htmlInput: { readOnly: true } }}
+              fullWidth
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button
+              onClick={() => void navigator.clipboard?.writeText(recoveryKey)}
+            >
+              Másolás
+            </Button>
+            <Button variant="contained" onClick={() => setRecoveryKey('')}>Megértettem</Button>
+          </DialogActions>
+        </Dialog>
+      </>
     )
   }
 
@@ -140,6 +203,20 @@ function App() {
               <CircularProgress size={28} />
               <Typography>Munkamenet ellenőrzése...</Typography>
             </Box>
+          ) : authMode === 'register' ? (
+            <RegistrationForm
+              username={username}
+              password={password}
+              isSubmitting={isSubmitting}
+              message={message}
+              onUsernameChange={setUsername}
+              onPasswordChange={setPassword}
+              onSubmit={handleRegister}
+              onSwitchToLogin={() => {
+                setAuthMode('login')
+                setMessage('')
+              }}
+            />
           ) : (
             <LoginForm
               username={username}
@@ -151,6 +228,10 @@ function App() {
               onPasswordChange={setPassword}
               onShowPasswordChange={() => setShowPassword((visible) => !visible)}
               onSubmit={handleLogin}
+              onSwitchToRegister={() => {
+                setAuthMode('register')
+                setMessage('')
+              }}
             />
           )}
         </Box>

@@ -25,6 +25,7 @@ interface LoginFormProps {
   onPasswordChange: (value: string) => void
   onShowPasswordChange: () => void
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
+  onSwitchToRegister: () => void
 }
 
 export function LoginForm(props: LoginFormProps) {
@@ -108,6 +109,10 @@ export function LoginForm(props: LoginFormProps) {
       <Typography className="form-note">
         A folytatással biztonságos munkamenetet indítasz.
       </Typography>
+      <Box className="auth-switch-row">
+        <Typography>Még nincs fiókja?</Typography>
+        <Button type="button" onClick={props.onSwitchToRegister}>Regisztráció</Button>
+      </Box>
     </>
   )
 }

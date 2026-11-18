@@ -14,6 +14,10 @@ export interface AuthSession {
 
 interface LoginResponse extends AuthSession {}
 
+export interface RegistrationResponse extends AuthSession {
+  recoveryKey: string
+}
+
 const sessionStorageKey = 'shopping-list-auth-session'
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? ''
 
@@ -57,6 +61,14 @@ export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T
 
 export function login(username: string, password: string): Promise<LoginResponse> {
   return apiRequest<LoginResponse>('/api/users/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+  })
+}
+
+export function register(username: string, password: string): Promise<RegistrationResponse> {
+  return apiRequest<RegistrationResponse>('/api/users/register', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username, password }),

@@ -244,6 +244,32 @@
   text-align: center;
 }
 
+.auth-switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 8px;
+  color: #848a80;
+}
+
+.auth-switch-row .MuiTypography-root {
+  font-size: 12px;
+}
+
+.auth-switch-row .MuiButton-root {
+  min-width: 0;
+  padding-inline: 6px;
+  color: #1d503f;
+  font-size: 12px;
+}
+
+.recovery-description {
+  margin-bottom: 18px !important;
+  color: #70786f;
+  font-size: 14px !important;
+}
+
 .checking-state,
 .signed-in-state {
   display: flex;
